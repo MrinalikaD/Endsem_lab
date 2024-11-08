@@ -9,89 +9,65 @@ pipeline {
         // Stage 1: Clone Repository
         stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/MrinalikaD/Endsem_lab.git', branch: 'main'
+                git url: 'https://github.com/MrinalikaD/Endsem_lab.git', branch: 'main'  // Replace with your repo URL
             }
         }
 
-        // Stage 2: Compile Code
-        stage('Compile') {
+        // Stage 2: Maven Build (Compile, Test, Package)
+        stage('Maven Build') {
             steps {
                 script {
                     try {
-                        bat 'mvn clean compile'  // Compile the code
-                        echo "Compilation completed successfully."
+                        bat 'mvn clean install'  // Runs Maven to clean, compile, and package the application on Windows
                     } catch (Exception e) {
-                        echo "Compilation failed: ${e.message}"
+                        echo "Maven build failed: ${e.message}"
                         currentBuild.result = 'FAILURE'
-                        throw e
+                        throw e  // Rethrow exception to stop the pipeline
                     }
                 }
             }
         }
 
-        // Stage 3: Run Tests
-        stage('Run Tests') {
-            steps {
-                script {
-                    try {
-                        bat 'mvn test'  // Run tests
-                        echo "Testing completed successfully."
-                        // Optional: Archive test reports
-                        archiveArtifacts artifacts: 'target/surefire-reports/*.xml', allowEmptyArchive: true
-                    } catch (Exception e) {
-                        echo "Testing failed: ${e.message}"
-                        currentBuild.result = 'FAILURE'
-                        throw e
-                    }
-                }
-            }
-        }
-
-        // Stage 4: Package the Application
-        stage('Package') {
-            steps {
-                script {
-                    try {
-                        bat 'mvn package'  // Package the application
-                        echo "Packaging completed successfully."
-                        // Archive the JAR file or other relevant artifacts
-                        archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
-                    } catch (Exception e) {
-                        echo "Packaging failed: ${e.message}"
-                        currentBuild.result = 'FAILURE'
-                        throw e
-                    }
-                }
-            }
-        }
-
-        // Stage 5: Build Docker Image
+        // Stage 3: Build Docker Image
         stage('Build Docker Image') {
             steps {
                 script {
                     try {
-                        bat "docker build -t ${DOCKER_IMAGE} -f Dockerfile ."  // Build Docker image
-                        echo "Docker image built successfully."
+                        bat "docker build -t ${DOCKER_IMAGE} -f Dockerfile ."  // Build Docker image using the multi-stage Dockerfile
                     } catch (Exception e) {
                         echo "Docker build failed: ${e.message}"
                         currentBuild.result = 'FAILURE'
-                        throw e
+                        throw e  // Rethrow exception to stop the pipeline
                     }
                 }
             }
         }
 
-        // Stage 6: Deploy Docker Container
+        // Stage 4: Run Tests
+        stage('Run Tests') {
+            steps {
+                script {
+                    try {
+                        bat 'mvn test'  // Runs the tests using Maven
+                    } catch (Exception e) {
+                        echo "Test execution failed: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        throw e  // Rethrow exception to stop the pipeline
+                    }
+                }
+            }
+        }
+
+        // Stage 5: Deploy Docker Container (run in background using 'start' on Windows)
         stage('Deploy Docker Container') {
             steps {
                 script {
                     try {
-                        bat "start /B docker run -d -p 8081:8080 ${DOCKER_IMAGE}"  // Deploy Docker container
-                        echo "Docker container deployed successfully."
+                        bat "start /B docker run -d -p 8081:8080 ${DOCKER_IMAGE}"  // Running the Docker container in the background
                     } catch (Exception e) {
                         echo "Docker container deployment failed: ${e.message}"
                         currentBuild.result = 'FAILURE'
-                        throw e
+                        throw e  // Rethrow exception to stop the pipeline
                     }
                 }
             }
