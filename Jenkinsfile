@@ -16,7 +16,15 @@ pipeline {
         // Stage 2: Maven Build (Compile, Test, Package)
         stage('Maven Build') {
             steps {
-                sh 'mvn clean install'  // Runs Maven to clean, compile, and package the application
+                script {
+                    try {
+                        sh 'mvn clean install'  // Runs Maven to clean, compile, and package the application
+                    } catch (Exception e) {
+                        echo "Maven build failed: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        throw e  // Rethrow exception to stop the pipeline
+                    }
+                }
             }
         }
 
@@ -24,7 +32,13 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build(DOCKER_IMAGE, '-f Dockerfile .')  // Builds Docker image using the multi-stage Dockerfile
+                    try {
+                        docker.build(DOCKER_IMAGE, '-f Dockerfile .')  // Builds Docker image using the multi-stage Dockerfile
+                    } catch (Exception e) {
+                        echo "Docker build failed: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        throw e  // Rethrow exception to stop the pipeline
+                    }
                 }
             }
         }
@@ -32,15 +46,30 @@ pipeline {
         // Stage 4: Run Tests
         stage('Run Tests') {
             steps {
-                sh 'mvn test'  // Runs the tests using Maven
+                script {
+                    try {
+                        sh 'mvn test'  // Runs the tests using Maven
+                    } catch (Exception e) {
+                        echo "Test execution failed: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        throw e  // Rethrow exception to stop the pipeline
+                    }
+                }
             }
         }
 
-        // Stage 5: Deploy Docker Container
+        // Stage 5: Deploy Docker Container (run in background using 'start' on Windows)
         stage('Deploy Docker Container') {
             steps {
                 script {
-                    docker.image(DOCKER_IMAGE).run('-p 8081:8080')  // Deploys the Docker container and maps port 8080 in container to 8081 on host
+                    try {
+                        // Running the Docker container in the background using 'start' (Windows)
+                        sh 'start /B docker image ${DOCKER_IMAGE} run -p 8081:8080'
+                    } catch (Exception e) {
+                        echo "Docker container deployment failed: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        throw e  // Rethrow exception to stop the pipeline
+                    }
                 }
             }
         }
@@ -48,7 +77,14 @@ pipeline {
 
     post {
         always {
-            sh 'docker system prune -f'  // Cleans up unused Docker images and containers
+            script {
+                // Clean up unused Docker images and containers
+                try {
+                    sh 'docker system prune -f'
+                } catch (Exception e) {
+                    echo "Docker cleanup failed: ${e.message}"
+                }
+            }
         }
         success {
             echo 'Pipeline completed successfully.'
