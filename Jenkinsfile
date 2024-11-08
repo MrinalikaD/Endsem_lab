@@ -18,7 +18,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh 'mvn clean install'  // Runs Maven to clean, compile, and package the application
+                        bat 'mvn clean install'  // Runs Maven to clean, compile, and package the application on Windows
                     } catch (Exception e) {
                         echo "Maven build failed: ${e.message}"
                         currentBuild.result = 'FAILURE'
@@ -33,7 +33,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        docker.build(DOCKER_IMAGE, '-f Dockerfile .')  // Builds Docker image using the multi-stage Dockerfile
+                        bat "docker build -t ${DOCKER_IMAGE} -f Dockerfile ."  // Build Docker image using the multi-stage Dockerfile
                     } catch (Exception e) {
                         echo "Docker build failed: ${e.message}"
                         currentBuild.result = 'FAILURE'
@@ -48,7 +48,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh 'mvn test'  // Runs the tests using Maven
+                        bat 'mvn test'  // Runs the tests using Maven
                     } catch (Exception e) {
                         echo "Test execution failed: ${e.message}"
                         currentBuild.result = 'FAILURE'
@@ -63,8 +63,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        // Running the Docker container in the background using 'start' (Windows)
-                        sh 'start /B docker image ${DOCKER_IMAGE} run -p 8081:8080'
+                        bat "start /B docker run -d -p 8081:8080 ${DOCKER_IMAGE}"  // Running the Docker container in the background
                     } catch (Exception e) {
                         echo "Docker container deployment failed: ${e.message}"
                         currentBuild.result = 'FAILURE'
@@ -80,7 +79,7 @@ pipeline {
             script {
                 // Clean up unused Docker images and containers
                 try {
-                    sh 'docker system prune -f'
+                    bat 'docker system prune -f'
                 } catch (Exception e) {
                     echo "Docker cleanup failed: ${e.message}"
                 }
